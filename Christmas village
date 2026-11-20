@@ -1,0 +1,139 @@
+"""Binary Christmas Village — a cozy, animated cyber-winter scene.
+Run: python christmas_village.py | Escape to quit | Space to pause.
+"""
+import math
+import random
+import tkinter as tk
+import time
+
+WIDTH, HEIGHT = 1100, 680
+FPS_MS = 33
+random.seed(24)
+
+class Village:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title('WINTER WONDERLAND // 01001101')
+        self.canvas = tk.Canvas(self.root, width=WIDTH, height=HEIGHT, bg='#07101e', highlightthickness=0)
+        self.canvas.pack()
+        self.root.resizable(False, False)
+        self.root.bind('<Escape>', lambda e: self.root.destroy())
+        self.root.bind('<space>', self.toggle)
+        self.paused = False
+        self.start = time.monotonic()
+        self.pause_started = None
+        self.paused_total = 0
+        self.snow = [dict(x=random.randrange(WIDTH), y=random.randrange(HEIGHT), speed=random.uniform(.35, 1.8), size=random.randint(9, 15), phase=random.random()*6.28) for _ in range(115)]
+        self.stars = [(random.randrange(WIDTH), random.randrange(320), random.choice([1, 1, 2])) for _ in range(95)]
+        self.tick()
+        self.root.mainloop()
+
+    def toggle(self, _):
+        self.paused = not self.paused
+        if self.paused:
+            self.pause_started = time.monotonic()
+        else:
+            self.paused_total += time.monotonic() - self.pause_started
+
+    def text(self, x, y, content, color, size=12, anchor='center', weight='normal'):
+        self.canvas.create_text(x, y, text=content, fill=color, font=('Consolas', size, weight), anchor=anchor)
+
+    def tree(self, x, y, scale, t):
+        c = self.canvas
+        c.create_rectangle(x-6*scale, y-4*scale, x+6*scale, y+20*scale, fill='#4b3435', outline='')
+        for layer in range(3):
+            top = y - (112-layer*29)*scale
+            half = (29+layer*13)*scale
+            bottom = y - (48-layer*25)*scale
+            c.create_polygon(x, top, x-half, bottom, x+half, bottom, fill=['#0a493e','#0c594a','#0d6b54'][layer], outline='#21836a', width=1)
+        for row in range(9):
+            yy = y-(101-row*12)*scale
+            span = (9+row*4.2)*scale
+            for col in range(-row//2-1, row//2+2):
+                xx = x + col*13*scale
+                if abs(xx-x) > span: continue
+                bit = '1' if (row*7+col*3+int(t*2))%4 == 0 else '0'
+                glow = '#f8cf74' if (row+col+int(t*2))%11 == 0 else '#7df5b5'
+                self.text(xx, yy, bit, glow, max(7, int(10*scale)))
+        self.text(x, y-118*scale, '✦', '#ffe6a3', max(13, int(24*scale)))
+
+    def house(self, x, base, w, h, color, t, label):
+        c = self.canvas
+        top = base-h
+        c.create_rectangle(x+9, top+8, x+w+9, base+8, fill='#050a12', outline='')
+        c.create_rectangle(x, top, x+w, base, fill=color, outline='#597082', width=2)
+        c.create_polygon(x-15, top+2, x+w/2, top-h*.48, x+w+15, top+2, fill='#26394c', outline='#94a6b7', width=2)
+        c.create_line(x-13, top-1, x+w/2, top-h*.48-3, x+w+13, top-1, fill='#e4f2f5', width=6, smooth=False)
+        c.create_rectangle(x+w*.72, top-h*.44, x+w*.82, top-h*.21, fill='#394456', outline='')
+        for wx in (x+w*.19, x+w*.68):
+            wy = top+h*.34
+            on = (int(t*.65)+int(wx))%9 != 0
+            c.create_rectangle(wx, wy, wx+w*.15, wy+h*.24, fill='#f9c976' if on else '#3a4654', outline='#d8a965', width=2)
+            c.create_line(wx+w*.075, wy, wx+w*.075, wy+h*.24, fill='#765d4d', width=2)
+            c.create_line(wx, wy+h*.12, wx+w*.15, wy+h*.12, fill='#765d4d', width=2)
+        c.create_rectangle(x+w*.43, base-h*.35, x+w*.59, base, fill='#283b49', outline='#8caaa9', width=2)
+        c.create_oval(x+w*.56, base-h*.17, x+w*.58, base-h*.15, fill='#ffd17b', outline='')
+        self.text(x+w/2, top+h*.15, label, '#b4e9dc', 9)
+        # Warm string lights along the roofline.
+        for i in range(10):
+            px = x + i*w/9
+            py = top + 6 + 5*math.sin(i*math.pi/9)
+            col = ['#f8cb75','#e99091','#7de7b1'][i%3] if (i+int(t*3))%5 != 0 else '#526371'
+            c.create_oval(px-3,py-3,px+3,py+3,fill=col,outline='')
+
+    def draw(self, t):
+        c = self.canvas
+        c.delete('all')
+        # Night sky and distant hills.
+        for i in range(24):
+            y = i*20
+            shade = (8+i//4, 17+i//3, 32+i//2)
+            c.create_rectangle(0,y,WIDTH,y+21,fill='#%02x%02x%02x'%shade,outline='')
+        c.create_oval(828,54,932,158,fill='#e3e9d6',outline='')
+        c.create_oval(808,47,920,156,fill='#0a1423',outline='')  # crescent moon
+        for i,(x,y,r) in enumerate(self.stars):
+            a = (math.sin(t*1.4+i)+1)/2
+            color = '#b9dfd7' if a>.45 else '#526f82'
+            c.create_oval(x-r,y-r,x+r,y+r,fill=color,outline='')
+        c.create_polygon(0,445,150,342,285,430,455,319,635,437,795,330,970,424,1100,350,1100,680,0,680,fill='#132b3b',outline='')
+        c.create_polygon(0,510,195,413,366,485,545,396,710,470,915,398,1100,484,1100,680,0,680,fill='#1a3b46',outline='')
+        c.create_oval(-140,455,1260,900,fill='#d8e9e7',outline='')
+        c.create_oval(-110,520,1210,930,fill='#edf6ef',outline='')
+        # Houses and layered trees.
+        self.tree(90,495,.85,t)
+        self.house(185,515,205,152,'#294655',t,'CABIN_01')
+        self.tree(435,505,.95,t)
+        self.house(500,535,235,178,'#3a465b',t,'NORTH_POLE.EXE')
+        self.tree(787,510,1.06,t)
+        self.house(857,525,170,139,'#42505a',t,'CABIN_02')
+        self.tree(1045,535,.7,t)
+        # Snow banks and path.
+        c.create_oval(-50,560,440,740,fill='#f4faf5',outline='')
+        c.create_oval(650,560,1180,750,fill='#f4faf5',outline='')
+        c.create_polygon(580,535,670,535,830,680,410,680,fill='#cadbd9',outline='')
+        for i in range(12):
+            y=545+i*12
+            x=625+math.sin(i*1.7)*i*7
+            c.create_oval(x-3,y-2,x+3,y+2,fill='#eff8ee',outline='')
+        # Binary snowfall in the foreground.
+        for i,flake in enumerate(self.snow):
+            xx = (flake['x'] + math.sin(t*.8+flake['phase'])*16)%WIDTH
+            yy = (flake['y']+t*flake['speed']*25)%HEIGHT
+            self.text(xx,yy,'01'[(i+int(t*2))%2], '#8cc9c5' if i%3 else '#ffffff',flake['size'])
+        # Title / UI overlay.
+        c.create_rectangle(22,20,432,105,fill='#0b1b29',outline='#3d857d',width=1)
+        self.text(40,42,'[ 01010111 01001001 01001110 ]','#7fdcbd',10,anchor='w')
+        self.text(40,70,'WINTER WONDERLAND', '#f1f7ec',23,anchor='w',weight='bold')
+        self.text(40,93,'// A BINARY CHRISTMAS VILLAGE', '#8abcb6',10,anchor='w')
+        c.create_rectangle(20,632,1080,662,fill='#0b1b29',outline='#47766f')
+        self.text(36,647,'STATUS: '+('PAUSED' if self.paused else 'SNOWFALL ACTIVE'), '#8de6bd',10,anchor='w')
+        self.text(550,647,'MERRY CHRISTMAS  •  01001101 01000011', '#f7d89a',10)
+        self.text(1064,647,'SPACE: PAUSE  |  ESC: EXIT','#9db7bd',10,anchor='e')
+
+    def tick(self):
+        if not self.paused:
+            self.draw(time.monotonic()-self.start-self.paused_total)
+        self.root.after(FPS_MS,self.tick)
+
+if __name__ == '__main__':
+    Village()
